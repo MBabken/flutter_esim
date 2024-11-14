@@ -1,6 +1,6 @@
-import 'package:flutter/material.dart';
 import 'dart:async';
 
+import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_esim/flutter_esim.dart';
 
@@ -34,7 +34,7 @@ class _MyAppState extends State<MyApp> {
     // Platform messages may fail, so we use a try/catch PlatformException.
     // We also handle the message potentially returning null.
     try {
-      isSupportESim = await _flutterEsimPlugin.isSupportESim();
+      isSupportESim = await _flutterEsimPlugin.isSupportESim([]);
     } on PlatformException {
       isSupportESim = false;
     }
@@ -52,7 +52,6 @@ class _MyAppState extends State<MyApp> {
   Future<void> installEsim() async {
     await _flutterEsimPlugin.installEsimProfile("LPA:1\$lpa.airalo.com\$TEST");
   }
-
 
   @override
   Widget build(BuildContext context) {

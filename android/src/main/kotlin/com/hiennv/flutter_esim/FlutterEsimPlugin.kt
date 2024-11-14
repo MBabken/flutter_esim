@@ -105,78 +105,59 @@ class FlutterEsimPlugin : FlutterPlugin, MethodCallHandler, ActivityAware {
 
     @SuppressLint("UnspecifiedRegisterReceiverFlag")
     override fun onMethodCall(call: MethodCall, result: Result) {
-        try {
-            when (call.method) {
-                "isSupportESim" -> {
-                    Log.d("isSupportESim", "")
-                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
-                        result.success(mgr?.isEnabled)
-                    }else {
-                        result.success(false)
-                    }
+        when (call.method) {
+            "isSupportESim" -> {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                    result.success(mgr?.isEnabled ?: false)
+                } else {
+                    result.success(false)
+                }
+            }
+
+            "installEsimProfile" -> {
+                if (Build.VERSION.SDK_INT < Build.VERSION_CODES.P || mgr == null || !mgr!!.isEnabled) {
+                    sendEvent("unsupport", HashMap())
+                    result.error("UNSUPPORTED", "eSIM not supported on this device", null)
+                    return
                 }
 
-                "installEsimProfile" -> {
-                    if (Build.VERSION.SDK_INT < Build.VERSION_CODES.P) {
-                        sendEvent("unsupport", HashMap())
-                        return
-                    }
-
-                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P && mgr != null && !mgr!!.isEnabled) {
-                        sendEvent("unsupport", HashMap())
-                        return
-                    }
-
+                // Register the receiver
+                try {
+                    val filter = IntentFilter(ACTION_DOWNLOAD_SUBSCRIPTION)
                     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                        context?.registerReceiver(
-                            receiver,
-                            IntentFilter(ACTION_DOWNLOAD_SUBSCRIPTION),
-                            null,
-                            null,
-                            Context.RECEIVER_NOT_EXPORTED
-                        )
+                        context?.registerReceiver(receiver, filter, Context.RECEIVER_NOT_EXPORTED)
                     } else {
-                        context?.registerReceiver(
-                            receiver,
-                            IntentFilter(ACTION_DOWNLOAD_SUBSCRIPTION),
-                            null,
-                            null
-                        )
+                        context?.registerReceiver(receiver, filter)
                     }
-                    val eSimProfile = (call.arguments as HashMap<*, *>)["profile"] as String
+
+                    // Proceed with eSIM download
+                    val eSimProfile = (call.arguments as HashMap<*, *>)["profile"] as? String ?: run {
+                        sendEvent("fail", HashMap())
+                        result.error("INVALID_PROFILE", "Invalid eSIM profile", null)
+                        return
+                    }
+                    Log.d("FlutterEsimPlugin", "Attempting to download eSIM profile: $eSimProfile")
                     val sub = DownloadableSubscription.forActivationCode(eSimProfile)
-                    val explicitIntent = Intent(ACTION_DOWNLOAD_SUBSCRIPTION);
-                    explicitIntent.apply {
+
+                    val explicitIntent = Intent(ACTION_DOWNLOAD_SUBSCRIPTION).apply {
                         `package` = context?.packageName
                     }
                     val callbackIntent = PendingIntent.getBroadcast(
                         context,
                         REQUEST_CODE_INSTALL,
                         explicitIntent,
-                        PendingIntent.FLAG_UPDATE_CURRENT or
-                                PendingIntent.FLAG_MUTABLE
+                        PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_MUTABLE
                     )
                     mgr?.downloadSubscription(sub, true, callbackIntent)
-                }
-
-                "instructions" -> {
-                    Log.d("installEsimProfile", "")
-                    result.success("1. Save QR Code\n" +
-                    "2. Go to Settings on your device\n" +
-                    "3. TAP Connections\n" +
-                    "4. TAP SIM Manager\n" +
-                    "5. TAP Add eSIM\n" +
-                    "6. TAP Scan QR code from service provider\n" +
-                    "7. TAP Enter activation code\n"+
-                    "8. ENTER the activation code found in the eSIM details\n"+
-                    "9. TAP Connect\n" +
-                    "10. TAP Add")
+                } catch (e: Exception) {
+                    Log.e("FlutterEsimPlugin", "Error registering receiver or downloading profile", e)
+                    result.error("ERROR", "Failed to install eSIM profile", e.localizedMessage)
                 }
             }
-        } catch (error: Exception) {
-            result.notImplemented()
+            // Other methods...
         }
     }
+
 
 
     private fun handleResolvableError(intent: Intent) {
