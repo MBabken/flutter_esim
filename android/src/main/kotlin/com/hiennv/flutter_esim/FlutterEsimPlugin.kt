@@ -22,7 +22,6 @@ import io.flutter.plugin.common.EventChannel
 import io.flutter.plugin.common.MethodCall
 import io.flutter.plugin.common.MethodChannel
 import io.flutter.plugin.common.MethodChannel.MethodCallHandler
-import io.flutter.plugin.common.MethodChannel.Result
 import java.lang.ref.WeakReference
 
 
@@ -80,6 +79,7 @@ class FlutterEsimPlugin : FlutterPlugin, MethodCallHandler, ActivityAware {
 
     private val REQUEST_CODE_INSTALL = 999
     private val ACTION_DOWNLOAD_SUBSCRIPTION = "download_subscription"
+    private val LPA_DECLARED_PERMISSION: String = "com.hiennv.flutter_esim.lpa.permission.BROADCAST"
 
     private var mgr: EuiccManager? = null
 
@@ -125,7 +125,7 @@ class FlutterEsimPlugin : FlutterPlugin, MethodCallHandler, ActivityAware {
                 try {
                     val filter = IntentFilter(ACTION_DOWNLOAD_SUBSCRIPTION)
                     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                        context?.registerReceiver(receiver, filter, Context.RECEIVER_NOT_EXPORTED)
+                        context?.registerReceiver(receiver, filter, LPA_DECLARED_PERMISSION,null)
                     } else {
                         context?.registerReceiver(receiver, filter)
                     }
@@ -146,7 +146,7 @@ class FlutterEsimPlugin : FlutterPlugin, MethodCallHandler, ActivityAware {
                         context,
                         REQUEST_CODE_INSTALL,
                         explicitIntent,
-                        PendingIntent.FLAG_IMMUTABLE
+                        PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_MUTABLE
                     )
                     mgr?.downloadSubscription(sub, true, callbackIntent)
                 } catch (e: Exception) {
