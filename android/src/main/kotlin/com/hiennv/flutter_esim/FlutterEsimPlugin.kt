@@ -146,7 +146,7 @@ class FlutterEsimPlugin : FlutterPlugin, MethodCallHandler, ActivityAware {
                         context,
                         REQUEST_CODE_INSTALL,
                         explicitIntent,
-                        PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_MUTABLE
+                        PendingIntent.FLAG_IMMUTABLE
                     )
                     mgr?.downloadSubscription(sub, true, callbackIntent)
                 } catch (e: Exception) {
